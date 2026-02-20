@@ -179,10 +179,62 @@ fn postprocess_v2_formatting(text: &str) -> String {
     })
 }
 
+/// Converts a Markdown document into Telegram **MarkdownV2**.
+///
+/// This function renders the supported Markdown constructs and escapes Telegram MarkdownV2
+/// reserved characters in plain text, so the output can be sent using Telegram's
+/// `parse_mode = MarkdownV2`.
+///
+/// It is equivalent to calling [`convert_with_strategy`] with
+/// [`UnsupportedTagsStrategy::Keep`].
+///
+/// The returned string ends with a trailing newline (`\n`) when the rendered output is
+/// non-empty.
+///
+/// # Examples
+///
+/// ```rust
+/// # fn main() -> telegram_markdown_v2::Result<()> {
+/// use telegram_markdown_v2::convert;
+///
+/// let out = convert("Hello world!")?;
+/// assert_eq!(out, "Hello world\\!\n");
+/// # Ok(())
+/// # }
+/// ```
 pub fn convert(markdown: &str) -> Result<String> {
     convert_with_strategy(markdown, UnsupportedTagsStrategy::Keep)
 }
 
+/// Converts a Markdown document into Telegram **MarkdownV2**, controlling how unsupported
+/// constructs are handled.
+///
+/// Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example:
+/// blockquotes, tables, and raw HTML blocks). When such nodes appear in the input, they
+/// are handled according to `strategy`:
+///
+/// - [`UnsupportedTagsStrategy::Keep`]: keep the unsupported content as-is.
+/// - [`UnsupportedTagsStrategy::Escape`]: escape the unsupported content as plain text.
+/// - [`UnsupportedTagsStrategy::Remove`]: drop the unsupported content entirely.
+///
+/// Independently of `strategy`, this converter recognizes the following HTML patterns
+/// outside inline/fenced code and turns them into Telegram MarkdownV2 markers:
+///
+/// - `<u>…</u>` → `__…__` (underline)
+/// - `<span class="tg-spoiler">…</span>` → `||…||` (spoiler)
+///
+/// # Examples
+///
+/// ```rust
+/// # fn main() -> telegram_markdown_v2::Result<()> {
+/// use telegram_markdown_v2::{UnsupportedTagsStrategy, convert_with_strategy};
+///
+/// // Blockquotes are not supported by Telegram MarkdownV2; escape them as plain text.
+/// let out = convert_with_strategy("> test", UnsupportedTagsStrategy::Escape)?;
+/// assert_eq!(out, "\\> test\n");
+/// # Ok(())
+/// # }
+/// ```
 pub fn convert_with_strategy(markdown: &str, strategy: UnsupportedTagsStrategy) -> Result<String> {
     let processed_markdown = preprocess_v2_html_tags(markdown)?;
     let tree = to_mdast(&processed_markdown, &ParseOptions::gfm())
