@@ -1,5 +1,6 @@
 use markdown::mdast::{Blockquote, Html, List, ListItem, Node, Table};
 
+use crate::errors::Result;
 use crate::utils::process_unsupported_tags;
 
 use super::Renderer;
@@ -10,12 +11,12 @@ pub fn render_list(
     parent: Option<&Node>,
     siblings: Option<&[Node]>,
     idx: usize,
-) -> String {
+) -> Result<String> {
     let list_node = Node::List(node.clone());
     let mut lines = Vec::new();
     for child in &node.children {
         if let Node::ListItem(item) = child {
-            lines.push(render_list_item(renderer, item, Some(&list_node)));
+            lines.push(render_list_item(renderer, item, Some(&list_node))?);
         }
     }
     let mut result = lines.join("\n");
@@ -24,46 +25,71 @@ pub fn render_list(
         result.push('\n');
     }
 
-    result
+    Ok(result)
 }
 
-pub fn render_list_item(renderer: &Renderer<'_>, node: &ListItem, parent: Option<&Node>) -> String {
+pub fn render_list_item(
+    renderer: &Renderer<'_>,
+    node: &ListItem,
+    parent: Option<&Node>,
+) -> Result<String> {
     let item_node = Node::ListItem(node.clone());
-    let content = renderer.render_children(&node.children, &item_node).trim().to_string();
+    let content = renderer
+        .render_children(&node.children, &item_node)?
+        .trim()
+        .to_string();
 
-    match parent {
+    Ok(match parent {
         Some(Node::List(list)) if list.ordered => {
             let position = list
                 .children
                 .iter()
                 .position(|child| matches!(child, Node::ListItem(item) if item == node))
-                .unwrap_or(0);
-            let start = list.start.unwrap_or(1);
+                .map(|pos| pos as u32);
+            let position = match position {
+                Some(pos) => pos,
+                None => 0,
+            };
+
+            let start = match list.start {
+                Some(start) => start,
+                None => 1,
+            };
             let marker = start + (position as u32);
             format!("{marker}\\.  {content}")
         }
         _ => format!("•   {content}"),
-    }
+    })
 }
 
-pub fn render_blockquote(renderer: &Renderer<'_>, node: &Blockquote, parent_node: &Node) -> String {
-    let content = renderer.render_children(&node.children, parent_node);
+pub fn render_blockquote(
+    renderer: &Renderer<'_>,
+    node: &Blockquote,
+    parent_node: &Node,
+) -> Result<String> {
+    let content = renderer.render_children(&node.children, parent_node)?;
     let lines: Vec<String> = content
         .split('\n')
         .filter(|line| !line.trim().is_empty())
         .map(|line| format!("> {line}"))
         .collect();
-    process_unsupported_tags(&lines.join("\n"), renderer.context().strategy)
+    Ok(process_unsupported_tags(
+        &lines.join("\n"),
+        renderer.context().strategy,
+    ))
 }
 
-pub fn render_html(renderer: &Renderer<'_>, node: &Html) -> String {
+pub fn render_html(renderer: &Renderer<'_>, node: &Html) -> Result<String> {
     if node.value.starts_with("<!--") {
-        return String::new();
+        return Ok(String::new());
     }
-    process_unsupported_tags(&node.value, renderer.context().strategy)
+    Ok(process_unsupported_tags(
+        &node.value,
+        renderer.context().strategy,
+    ))
 }
 
-pub fn render_table(renderer: &Renderer<'_>, node: &Table) -> String {
+pub fn render_table(renderer: &Renderer<'_>, node: &Table) -> Result<String> {
     let mut rows: Vec<Vec<String>> = Vec::new();
     for row_node in &node.children {
         if let Node::TableRow(row) = row_node {
@@ -97,10 +123,16 @@ pub fn render_table(renderer: &Renderer<'_>, node: &Table) -> String {
         ]
         .join("\n")
             + "\n";
-        return process_unsupported_tags(&formatted, renderer.context().strategy);
+        return Ok(process_unsupported_tags(
+            &formatted,
+            renderer.context().strategy,
+        ));
     }
 
-    let max_cols = rows.iter().map(|row| row.len()).max().unwrap_or(0);
+    let max_cols = match rows.iter().map(|row| row.len()).max() {
+        Some(max) => max,
+        None => 0,
+    };
     let mut output = String::new();
     for row in rows {
         let mut padded = row;
@@ -113,7 +145,7 @@ pub fn render_table(renderer: &Renderer<'_>, node: &Table) -> String {
         output.push_str(" |\n");
     }
 
-    process_unsupported_tags(&output, renderer.context().strategy)
+    Ok(process_unsupported_tags(&output, renderer.context().strategy))
 }
 
 fn is_followed_by_code(parent: Option<&Node>, siblings: Option<&[Node]>, idx: usize) -> bool {

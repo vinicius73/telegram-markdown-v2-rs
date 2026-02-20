@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 markdown = "1"
 regex = "1"
+thiserror = "2.0.18"
 url = "2"
 
 [dev-dependencies]

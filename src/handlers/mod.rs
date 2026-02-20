@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use markdown::mdast::Node;
 
+use crate::errors::Result;
 use crate::types::{Definition, UnsupportedTagsStrategy};
 
 pub mod blocks;
@@ -28,37 +29,37 @@ impl<'a> Renderer<'a> {
         self.ctx
     }
 
-    pub fn render_root(&self, node: &Node) -> String {
+    pub fn render_root(&self, node: &Node) -> Result<String> {
         if let Node::Root(root) = node {
-            let chunks: Vec<String> = root
-                .children
-                .iter()
-                .enumerate()
-                .map(|(idx, child)| self.render_node(child, Some(node), Some(&root.children), idx))
-                .filter(|value| !value.is_empty())
-                .collect();
+            let mut chunks: Vec<String> = Vec::new();
+            for (idx, child) in root.children.iter().enumerate() {
+                let rendered = self.render_node(child, Some(node), Some(&root.children), idx)?;
+                if !rendered.is_empty() {
+                    chunks.push(rendered);
+                }
+            }
 
             if chunks.is_empty() {
-                String::new()
+                Ok(String::new())
             } else {
                 let combined = chunks.join("\n\n");
-                if combined.ends_with('\n') {
+                Ok(if combined.ends_with('\n') {
                     combined
                 } else {
                     format!("{combined}\n")
-                }
+                })
             }
         } else {
             self.render_node(node, None, None, 0)
         }
     }
 
-    pub fn render_children(&self, children: &[Node], parent: &Node) -> String {
-        children
-            .iter()
-            .enumerate()
-            .map(|(idx, child)| self.render_node(child, Some(parent), Some(children), idx))
-            .collect::<String>()
+    pub fn render_children(&self, children: &[Node], parent: &Node) -> Result<String> {
+        let mut out = String::new();
+        for (idx, child) in children.iter().enumerate() {
+            out.push_str(&self.render_node(child, Some(parent), Some(children), idx)?);
+        }
+        Ok(out)
     }
 
     pub fn render_node(
@@ -67,7 +68,7 @@ impl<'a> Renderer<'a> {
         parent: Option<&Node>,
         siblings: Option<&[Node]>,
         idx: usize,
-    ) -> String {
+    ) -> Result<String> {
         match node {
             Node::Heading(n) => formatting::render_heading(self, n, node),
             Node::Strong(n) => formatting::render_strong(self, n, node),
@@ -87,8 +88,8 @@ impl<'a> Renderer<'a> {
             Node::Table(n) => blocks::render_table(self, n),
             Node::Paragraph(n) => self.render_children(&n.children, node),
             Node::Root(_) => self.render_root(node),
-            Node::Definition(_) => String::new(),
-            _ => String::new(),
+            Node::Definition(_) => Ok(String::new()),
+            _ => Ok(String::new()),
         }
     }
 }
