@@ -1,16 +1,16 @@
 use std::fs;
 use std::io;
 use std::io::ErrorKind;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rstest::rstest;
 use telegram_markdown_v2::{UnsupportedTagsStrategy, convert, convert_with_strategy};
 
-fn parse_strategy_from_filename(path: &PathBuf) -> UnsupportedTagsStrategy {
-    let file_name = match path.file_name().and_then(|name| name.to_str()) {
-        Some(name) => name,
-        None => "",
-    };
+fn parse_strategy_from_filename(path: &Path) -> UnsupportedTagsStrategy {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default();
 
     if file_name.ends_with("__escape.input.md") {
         UnsupportedTagsStrategy::Escape
@@ -21,7 +21,7 @@ fn parse_strategy_from_filename(path: &PathBuf) -> UnsupportedTagsStrategy {
     }
 }
 
-fn expected_path_for_input(input_path: &PathBuf) -> io::Result<PathBuf> {
+fn expected_path_for_input(input_path: &Path) -> io::Result<PathBuf> {
     let input_name = input_path
         .file_name()
         .and_then(|name| name.to_str())
