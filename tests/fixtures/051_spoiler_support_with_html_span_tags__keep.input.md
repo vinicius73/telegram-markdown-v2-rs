@@ -1,0 +1,1 @@
+This is <span class="tg-spoiler">spoiler</span> text

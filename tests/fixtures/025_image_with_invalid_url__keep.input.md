@@ -1,0 +1,1 @@
+![logo.png](/relative-path-logo.png 'test')
