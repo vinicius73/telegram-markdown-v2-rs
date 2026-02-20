@@ -9,7 +9,7 @@ name = "telegram_markdown_v2"
 [dependencies]
 markdown = "1"
 regex = "1"
-thiserror = "2.0.18"
+thiserror = "2"
 url = "2"
 
 [dev-dependencies]
