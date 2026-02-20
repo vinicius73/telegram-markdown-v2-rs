@@ -3,9 +3,13 @@ use markdown::mdast::{Delete, Emphasis, Heading, Node, Strong};
 use crate::errors::Result;
 use crate::utils::wrap;
 
-use super::{utils::render_children, Renderer};
+use super::{Renderer, utils::render_children};
 
-pub fn render_heading(renderer: &Renderer<'_>, node: &Heading, parent_node: &Node) -> Result<String> {
+pub fn render_heading(
+    renderer: &Renderer<'_>,
+    node: &Heading,
+    parent_node: &Node,
+) -> Result<String> {
     Ok(wrap(
         &render_children(renderer, &node.children, parent_node)?,
         "*",

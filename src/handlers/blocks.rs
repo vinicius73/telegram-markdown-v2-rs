@@ -45,17 +45,11 @@ pub fn render_list_item(
                 .children
                 .iter()
                 .position(|child| matches!(child, Node::ListItem(item) if item == node))
-                .map(|pos| pos as u32);
-            let position = match position {
-                Some(pos) => pos,
-                None => 0,
-            };
+                .map(|pos| pos as u32)
+                .unwrap_or_default();
 
-            let start = match list.start {
-                Some(start) => start,
-                None => 1,
-            };
-            let marker = start + (position as u32);
+            let start = list.start.unwrap_or(1);
+            let marker = start + position;
             format!("{marker}\\.  {content}")
         }
         _ => format!("•   {content}"),
@@ -129,10 +123,7 @@ pub fn render_table(renderer: &Renderer<'_>, node: &Table) -> Result<String> {
         ));
     }
 
-    let max_cols = match rows.iter().map(|row| row.len()).max() {
-        Some(max) => max,
-        None => 0,
-    };
+    let max_cols = rows.iter().map(|row| row.len()).max().unwrap_or_default();
     let mut output = String::new();
     for row in rows {
         let mut padded = row;
@@ -145,11 +136,21 @@ pub fn render_table(renderer: &Renderer<'_>, node: &Table) -> Result<String> {
         output.push_str(" |\n");
     }
 
-    Ok(process_unsupported_tags(&output, renderer.context().strategy))
+    Ok(process_unsupported_tags(
+        &output,
+        renderer.context().strategy,
+    ))
 }
 
 fn is_followed_by_code(parent: Option<&Node>, siblings: Option<&[Node]>, idx: usize) -> bool {
-    if !matches!(parent, Some(Node::Root(_)) | Some(Node::ListItem(_)) | Some(Node::Blockquote(_)) | Some(Node::Paragraph(_)) | Some(Node::Heading(_))) {
+    if !matches!(
+        parent,
+        Some(Node::Root(_))
+            | Some(Node::ListItem(_))
+            | Some(Node::Blockquote(_))
+            | Some(Node::Paragraph(_))
+            | Some(Node::Heading(_))
+    ) {
         return false;
     }
 

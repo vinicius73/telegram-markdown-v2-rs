@@ -4,7 +4,7 @@ use crate::errors::Result;
 use crate::types::TextType;
 use crate::utils::{escape_symbols, is_url};
 
-use super::{utils::render_children, Renderer};
+use super::{Renderer, utils::render_children};
 
 pub fn render_link(renderer: &Renderer<'_>, node: &Link, parent_node: &Node) -> Result<String> {
     let text = {
