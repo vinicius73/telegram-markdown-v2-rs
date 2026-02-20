@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 
 use rstest::rstest;
-use telegram_markdown_v2_rs::{UnsupportedTagsStrategy, convert, convert_with_strategy};
+use telegram_markdown_v2::{UnsupportedTagsStrategy, convert, convert_with_strategy};
 
 fn parse_strategy_from_filename(path: &PathBuf) -> UnsupportedTagsStrategy {
     let file_name = match path.file_name().and_then(|name| name.to_str()) {
@@ -28,7 +28,10 @@ fn expected_path_for_input(input_path: &PathBuf) -> io::Result<PathBuf> {
         .ok_or_else(|| {
             io::Error::new(
                 ErrorKind::InvalidData,
-                format!("input fixture path has no filename: {}", input_path.display()),
+                format!(
+                    "input fixture path has no filename: {}",
+                    input_path.display()
+                ),
             )
         })?;
 

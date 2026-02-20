@@ -427,7 +427,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "telegram-markdown-v2-rs"
+name = "telegram-markdown-v2"
 version = "0.1.0"
 dependencies = [
  "markdown",

@@ -1,7 +1,10 @@
 [package]
-name = "telegram-markdown-v2-rs"
+name = "telegram-markdown-v2"
 version = "0.1.0"
 edition = "2024"
+
+[lib]
+name = "telegram_markdown_v2"
 
 [dependencies]
 markdown = "1"
