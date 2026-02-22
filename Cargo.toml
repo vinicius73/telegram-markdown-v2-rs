@@ -2,6 +2,12 @@
 name = "telegram-markdown-v2"
 version = "0.1.0"
 edition = "2024"
+description = "Transform regular Markdown into Telegram MarkdownV2 (parse_mode = MarkdownV2)."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/vinicius73/telegram-markdown-v2-rs"
+homepage = "https://github.com/vinicius73/telegram-markdown-v2-rs"
+documentation = "https://docs.rs/telegram-markdown-v2"
 
 [lib]
 name = "telegram_markdown_v2"
