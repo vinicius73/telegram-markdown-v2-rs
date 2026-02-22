@@ -65,7 +65,12 @@ impl<'a> Renderer<'a> {
 
     /// Renders all children in order without inserting separators.
     pub fn render_children(&self, children: &[Node], parent: &Node) -> Result<String> {
-        let mut out = String::new();
+        if children.is_empty() {
+            return Ok(String::new());
+        }
+
+        // Small heuristic to reduce reallocations in common short-text documents.
+        let mut out = String::with_capacity(children.len().saturating_mul(16));
         for (idx, child) in children.iter().enumerate() {
             out.push_str(&self.render_node(child, Some(parent), Some(children), idx)?);
         }
