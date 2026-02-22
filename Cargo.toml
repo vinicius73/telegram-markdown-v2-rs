@@ -9,7 +9,7 @@ repository = "https://github.com/vinicius73/telegram-markdown-v2-rs"
 homepage = "https://github.com/vinicius73/telegram-markdown-v2-rs"
 documentation = "https://docs.rs/telegram-markdown-v2"
 
-exclude = [".github/*"]
+exclude = [".github/*", "tests/*"]
 
 [lib]
 name = "telegram_markdown_v2"
