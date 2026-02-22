@@ -5,6 +5,7 @@ use crate::utils::process_unsupported_tags;
 
 use super::Renderer;
 
+/// Renders a Markdown list by rendering each list item on its own line.
 pub fn render_list(
     renderer: &Renderer<'_>,
     node: &List,
@@ -28,6 +29,7 @@ pub fn render_list(
     Ok(result)
 }
 
+/// Renders one list item using ordered or bullet style.
 pub fn render_list_item(
     renderer: &Renderer<'_>,
     node: &ListItem,
@@ -56,6 +58,7 @@ pub fn render_list_item(
     })
 }
 
+/// Renders a blockquote by prefixing each non-empty line with `> `.
 pub fn render_blockquote(
     renderer: &Renderer<'_>,
     node: &Blockquote,
@@ -73,6 +76,9 @@ pub fn render_blockquote(
     ))
 }
 
+/// Renders raw HTML according to the unsupported-tags strategy.
+///
+/// HTML comments are always ignored.
 pub fn render_html(renderer: &Renderer<'_>, node: &Html) -> Result<String> {
     if node.value.starts_with("<!--") {
         return Ok(String::new());
@@ -83,6 +89,10 @@ pub fn render_html(renderer: &Renderer<'_>, node: &Html) -> Result<String> {
     ))
 }
 
+/// Renders a Markdown table as pipe-separated rows.
+///
+/// The resulting table is passed through the unsupported-tags strategy because
+/// Telegram MarkdownV2 does not natively support tables.
 pub fn render_table(renderer: &Renderer<'_>, node: &Table) -> Result<String> {
     let mut rows: Vec<Vec<String>> = Vec::new();
     for row_node in &node.children {

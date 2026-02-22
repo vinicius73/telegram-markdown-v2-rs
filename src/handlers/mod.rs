@@ -11,24 +11,33 @@ pub mod links;
 pub mod text;
 pub mod utils;
 
+/// Immutable data required while rendering Markdown AST nodes.
 pub struct RenderContext<'a> {
+    /// Link reference definitions collected from the source document.
     pub definitions: &'a HashMap<String, Definition>,
+    /// Strategy for nodes unsupported by Telegram MarkdownV2.
     pub strategy: UnsupportedTagsStrategy,
 }
 
+/// Node renderer that dispatches each AST node to its Telegram renderer.
 pub struct Renderer<'a> {
     ctx: &'a RenderContext<'a>,
 }
 
 impl<'a> Renderer<'a> {
+    /// Creates a renderer bound to a given rendering context.
     pub fn new(ctx: &'a RenderContext<'a>) -> Self {
         Self { ctx }
     }
 
+    /// Returns the rendering context currently used by this renderer.
     pub fn context(&self) -> &'a RenderContext<'a> {
         self.ctx
     }
 
+    /// Renders a root node and joins top-level blocks with blank lines.
+    ///
+    /// For non-root nodes, this delegates to [`Self::render_node`].
     pub fn render_root(&self, node: &Node) -> Result<String> {
         if let Node::Root(root) = node {
             let mut chunks: Vec<String> = Vec::new();
@@ -54,6 +63,7 @@ impl<'a> Renderer<'a> {
         }
     }
 
+    /// Renders all children in order without inserting separators.
     pub fn render_children(&self, children: &[Node], parent: &Node) -> Result<String> {
         let mut out = String::new();
         for (idx, child) in children.iter().enumerate() {
@@ -62,6 +72,9 @@ impl<'a> Renderer<'a> {
         Ok(out)
     }
 
+    /// Renders a single AST node into Telegram MarkdownV2.
+    ///
+    /// Unknown or intentionally ignored node variants render as an empty string.
     pub fn render_node(
         &self,
         node: &Node,

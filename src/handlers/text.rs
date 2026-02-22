@@ -5,16 +5,22 @@ use crate::errors::{Error, Result};
 use crate::types::TextType;
 use crate::utils::escape_symbols;
 
+/// Renders plain text with Telegram MarkdownV2 escaping.
 pub fn render_text(node: &Text) -> Result<String> {
     Ok(escape_symbols(&node.value, TextType::Text))
 }
 
+/// Renders inline code wrapped in backticks with code-context escaping.
 pub fn render_inline_code(node: &InlineCode) -> Result<String> {
     Ok(format!("`{}`", escape_symbols(&node.value, TextType::Code)))
 }
 
 const SHEBANG_PATTERN: &str = r"^#![a-z]+\n";
 
+/// Renders a fenced code block.
+///
+/// A leading shebang line is stripped to keep output consistent with Telegram
+/// code block rendering.
 pub fn render_code(node: &Code) -> Result<String> {
     let re = Regex::new(SHEBANG_PATTERN).map_err(|source| Error::RegexCompile {
         name: "code_block_shebang",

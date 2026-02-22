@@ -4,6 +4,10 @@ use markdown::mdast::Node;
 
 use crate::types::Definition;
 
+/// Collects all reference-style link definitions from a Markdown AST.
+///
+/// The returned map is keyed by each definition identifier as produced by the
+/// parser.
 pub fn collect_definitions(root: &Node) -> HashMap<String, Definition> {
     let mut definitions = HashMap::new();
     collect_recursive(root, &mut definitions);

@@ -6,6 +6,9 @@ use crate::utils::{escape_symbols, is_url};
 
 use super::{Renderer, utils::render_children};
 
+/// Renders an inline link.
+///
+/// If the URL is invalid, this falls back to escaped text content.
 pub fn render_link(renderer: &Renderer<'_>, node: &Link, parent_node: &Node) -> Result<String> {
     let text = {
         let rendered = render_children(renderer, &node.children, parent_node)?;
@@ -38,6 +41,9 @@ pub fn render_link(renderer: &Renderer<'_>, node: &Link, parent_node: &Node) -> 
     }
 }
 
+/// Renders a reference-style link using a previously collected definition.
+///
+/// If the definition is missing or invalid, this falls back to plain text.
 pub fn render_link_reference(
     renderer: &Renderer<'_>,
     node: &LinkReference,
@@ -78,6 +84,9 @@ pub fn render_link_reference(
     }
 }
 
+/// Renders an image as a Telegram link using `alt` or `title` as visible text.
+///
+/// If the URL is invalid, this falls back to escaped text.
 pub fn render_image(node: &Image) -> Result<String> {
     let text = if node.alt.is_empty() {
         match node.title.as_ref() {
@@ -111,6 +120,9 @@ pub fn render_image(node: &Image) -> Result<String> {
     }
 }
 
+/// Renders a reference-style image using definition URL and optional title.
+///
+/// If the definition is missing or invalid, this falls back to escaped text.
 pub fn render_image_reference(renderer: &Renderer<'_>, node: &ImageReference) -> Result<String> {
     let definition = renderer.context().definitions.get(&node.identifier);
     let text = if node.alt.is_empty() {
