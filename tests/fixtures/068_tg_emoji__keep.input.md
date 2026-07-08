@@ -1,1 +1,1 @@
-<tg-emoji emoji-id="5789">👍</tg-emoji>
+<tg-emoji emoji-id="5368324170671202286">👍</tg-emoji>
