@@ -45,7 +45,7 @@ fn main() -> telegram_markdown_v2::Result<()> {
 
 #### Strategy for “unsupported” constructs
 
-Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example: blockquotes, tables, HTML blocks). Use `UnsupportedTagsStrategy` to decide what to do:
+Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example: tables and HTML blocks). Blockquotes are rendered as native Telegram `>` lines. Use `UnsupportedTagsStrategy` to decide what to do with unsupported content:
 
 - `Keep`: keep the content as-is
 - `Escape`: treat it as plain text and escape special characters
@@ -55,8 +55,8 @@ Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example:
 use telegram_markdown_v2::{convert_with_strategy, UnsupportedTagsStrategy};
 
 fn main() -> telegram_markdown_v2::Result<()> {
-    let out = convert_with_strategy("> test", UnsupportedTagsStrategy::Escape)?;
-    assert_eq!(out, "\\> test\n");
+    let out = convert_with_strategy("<div>test</div>", UnsupportedTagsStrategy::Escape)?;
+    assert_eq!(out, "<div\\>test</div\\>\n");
     Ok(())
 }
 ```

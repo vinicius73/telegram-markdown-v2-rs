@@ -70,10 +70,7 @@ pub fn render_blockquote(
         .filter(|line| !line.trim().is_empty())
         .map(|line| format!("> {line}"))
         .collect();
-    Ok(process_unsupported_tags(
-        &lines.join("\n"),
-        renderer.context().strategy,
-    ))
+    Ok(lines.join("\n"))
 }
 
 /// Renders raw HTML according to the unsupported-tags strategy.

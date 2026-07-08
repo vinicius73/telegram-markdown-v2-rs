@@ -210,7 +210,7 @@ pub fn convert(markdown: &str) -> Result<String> {
 /// constructs are handled.
 ///
 /// Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example:
-/// blockquotes, tables, and raw HTML blocks). When such nodes appear in the input, they
+/// tables and raw HTML blocks). When such nodes appear in the input, they
 /// are handled according to `strategy`:
 ///
 /// - [`UnsupportedTagsStrategy::Keep`]: keep the unsupported content as-is.
@@ -229,9 +229,8 @@ pub fn convert(markdown: &str) -> Result<String> {
 /// # fn main() -> telegram_markdown_v2::Result<()> {
 /// use telegram_markdown_v2::{UnsupportedTagsStrategy, convert_with_strategy};
 ///
-/// // Blockquotes are not supported by Telegram MarkdownV2; escape them as plain text.
-/// let out = convert_with_strategy("> test", UnsupportedTagsStrategy::Escape)?;
-/// assert_eq!(out, "\\> test\n");
+/// let out = convert_with_strategy("<div>test</div>", UnsupportedTagsStrategy::Escape)?;
+/// assert_eq!(out, "<div\\>test</div\\>\n");
 /// # Ok(())
 /// # }
 /// ```
