@@ -46,7 +46,7 @@ pub fn escape_symbols(text: &str, text_type: TextType) -> String {
             let is_telegram_deep_link = text.starts_with("tg://");
             escape_with_rules(text, |byte| {
                 matches!(byte, b'\\' | b'(' | b')')
-                    || (is_telegram_deep_link && matches!(byte, b'?' | b'='))
+                    || (is_telegram_deep_link && matches!(byte, b'?' | b'=' | b'&'))
             })
         }
         TextType::Text => escape_with_rules(text, |byte| {
@@ -134,6 +134,10 @@ mod tests {
         #[case(
             "tg://resolve?domain=test(abc)",
             "tg://resolve\\?domain\\=test\\(abc\\)"
+        )]
+        #[case(
+            "tg://time?unix=1647531900&format=wDT",
+            "tg://time\\?unix\\=1647531900\\&format\\=wDT"
         )]
         #[case("TG://resolve?domain=test(abc)", "TG://resolve?domain=test\\(abc\\)")]
         fn escapes_text_type_link(#[case] input: &str, #[case] expected: &str) {
