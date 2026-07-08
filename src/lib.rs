@@ -43,8 +43,9 @@
 //!
 //! Outside inline/fenced code, the converter recognizes:
 //!
-//! - `<u>…</u>` as underline (`__…__`)
-//! - `<span class="tg-spoiler">…</span>` as spoiler (`||…||`)
+//! - `<u>…</u>` and `<ins>…</ins>` as underline (`__…__`)
+//! - `<span class="tg-spoiler">…</span>` and `<tg-spoiler>…</tg-spoiler>` as spoiler (`||…||`)
+//! - `<tg-emoji emoji-id="…">…</tg-emoji>` as custom emoji (`![…](tg://emoji?id=…)`)
 //! - `<blockquote expandable>…</blockquote>` as expandable blockquote (`> …||`)
 mod convert;
 mod definitions;

@@ -14,13 +14,16 @@ const S_END: &str = "TGMDV2SEND";
 const EXPAND_FIRST: &str = "TGMDV2EXPFIRST ";
 const EXPAND_END: &str = "TGMDV2EXPENDMARK";
 
-const UNDERLINE_PATTERN: &str = r"(?s)<u>(.*?)</u>";
-const SPOILER_PATTERN: &str = r#"(?s)<span class="tg-spoiler">(.*?)</span>"#;
+const UNDERLINE_PATTERN: &str = r"(?s)<(?:u|ins)>(.*?)</(?:u|ins)>";
+const SPOILER_PATTERN: &str =
+    r#"(?s)<(?:span class="tg-spoiler"|tg-spoiler)>(.*?)</(?:span|tg-spoiler)>"#;
+const TG_EMOJI_PATTERN: &str = r#"(?s)<tg-emoji emoji-id="([^"]+)">(.*?)</tg-emoji>"#;
 const EXPANDABLE_BLOCKQUOTE_PATTERN: &str = r"(?s)<blockquote\s+expandable>(.*?)</blockquote>";
 
 static UNDERLINE_RE: OnceLock<Regex> = OnceLock::new();
 static SPOILER_RE: OnceLock<Regex> = OnceLock::new();
 static EXPANDABLE_BLOCKQUOTE_RE: OnceLock<Regex> = OnceLock::new();
+static TG_EMOJI_RE: OnceLock<Regex> = OnceLock::new();
 
 fn underline_re() -> &'static Regex {
     // Avoid compiling regexes on every conversion; cache them for the process lifetime.
@@ -36,6 +39,10 @@ fn expandable_blockquote_re() -> &'static Regex {
     EXPANDABLE_BLOCKQUOTE_RE.get_or_init(|| {
         Regex::new(EXPANDABLE_BLOCKQUOTE_PATTERN).expect("invalid expandable blockquote regex")
     })
+}
+
+fn tg_emoji_re() -> &'static Regex {
+    TG_EMOJI_RE.get_or_init(|| Regex::new(TG_EMOJI_PATTERN).expect("invalid tg-emoji regex"))
 }
 
 fn ends_with_blockquote_line(text: &str) -> bool {
@@ -246,11 +253,17 @@ fn preprocess_v2_html_tags(text: &str) -> Result<String> {
     let with_expandable = preprocess_expandable_blockquotes(text)?;
     let underline = underline_re();
     let spoiler = spoiler_re();
+    let tg_emoji = tg_emoji_re();
 
     Ok(transform_outside_code(&with_expandable, |chunk| {
-        let with_underlines = underline.replace_all(chunk, format!("{U_START}${{1}}{U_END}"));
+        let with_emojis = tg_emoji.replace_all(chunk, "![$2](tg://emoji?id=$1)");
+        let with_underlines =
+            underline.replace_all(with_emojis.as_ref(), format!("{U_START}${{1}}{U_END}"));
         spoiler
-            .replace_all(with_underlines.as_ref(), format!("{S_START}${{1}}{S_END}"))
+            .replace_all(
+                with_underlines.as_ref(),
+                format!("{S_START}${{1}}{S_END}"),
+            )
             .to_string()
     }))
 }
@@ -308,7 +321,9 @@ pub fn convert(markdown: &str) -> Result<String> {
 /// outside inline/fenced code and turns them into Telegram MarkdownV2 markers:
 ///
 /// - `<u>…</u>` → `__…__` (underline)
-/// - `<span class="tg-spoiler">…</span>` → `||…||` (spoiler)
+/// - `<ins>…</ins>` → `__…__` (underline)
+/// - `<span class="tg-spoiler">…</span>` / `<tg-spoiler>…</tg-spoiler>` → `||…||` (spoiler)
+/// - `<tg-emoji emoji-id="…">…</tg-emoji>` → `![…](tg://emoji?id=…)` (custom emoji)
 /// - `<blockquote expandable>…</blockquote>` → expandable blockquote (`> …||`)
 ///
 /// # Examples

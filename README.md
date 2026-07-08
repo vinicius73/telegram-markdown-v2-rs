@@ -65,8 +65,9 @@ fn main() -> telegram_markdown_v2::Result<()> {
 
 Outside inline/fenced code, the converter recognizes:
 
-- `<u>…</u>` → `__…__` (underline)
-- `<span class="tg-spoiler">…</span>` → `||…||` (spoiler)
+- `<u>…</u>` / `<ins>…</ins>` → `__…__` (underline)
+- `<span class="tg-spoiler">…</span>` / `<tg-spoiler>…</tg-spoiler>` → `||…||` (spoiler)
+- `<tg-emoji emoji-id="…">…</tg-emoji>` → `![…](tg://emoji?id=…)` (custom emoji)
 - `<blockquote expandable>…</blockquote>` → expandable blockquote (`> …||`)
 
 ```rust
