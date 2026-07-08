@@ -52,6 +52,19 @@ fn tg_time_re() -> &'static Regex {
     TG_TIME_RE.get_or_init(|| Regex::new(TG_TIME_PATTERN).expect("invalid tg-time regex"))
 }
 
+/// Escapes `\`, `[`, `]` so an interpolated label can't break the
+/// `![label](url)` syntax this preprocessing step generates.
+fn escape_markdown_label(text: &str) -> String {
+    let mut escaped = String::with_capacity(text.len());
+    for ch in text.chars() {
+        if matches!(ch, '\\' | '[' | ']') {
+            escaped.push('\\');
+        }
+        escaped.push(ch);
+    }
+    escaped
+}
+
 fn ends_with_blockquote_line(text: &str) -> bool {
     text.trim_end()
         .lines()
@@ -278,18 +291,22 @@ fn preprocess_v2_html_tags(text: &str) -> String {
             return chunk.to_owned();
         }
 
-        let with_emojis = tg_emoji_re().replace_all(chunk, "![$2](tg://emoji?id=$1)");
+        let with_emojis = tg_emoji_re().replace_all(chunk, |caps: &regex::Captures| {
+            let emoji_id = &caps[1];
+            let label = escape_markdown_label(&caps[2]);
+            format!("![{label}](tg://emoji?id={emoji_id})")
+        });
         let with_times =
             tg_time_re().replace_all(with_emojis.as_ref(), |caps: &regex::Captures| {
                 let unix = &caps[1];
-                let text = &caps[3];
+                let label = escape_markdown_label(&caps[3]);
                 match caps
                     .get(2)
                     .map(|matched| matched.as_str())
                     .filter(|value| !value.is_empty())
                 {
-                    Some(format) => format!("![{text}](tg://time?unix={unix}&format={format})"),
-                    None => format!("![{text}](tg://time?unix={unix})"),
+                    Some(format) => format!("![{label}](tg://time?unix={unix}&format={format})"),
+                    None => format!("![{label}](tg://time?unix={unix})"),
                 }
             });
         let with_underlines =
