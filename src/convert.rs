@@ -230,12 +230,21 @@ where
 {
     let mut out = String::with_capacity(input.len());
     let mut fence: Option<Fence> = None;
+    let mut outside_buf = String::new();
+
+    let flush_outside = |out: &mut String, buf: &mut String, transform: &mut F| {
+        if !buf.is_empty() {
+            out.push_str(&transform_outside_inline_code(buf, transform));
+            buf.clear();
+        }
+    };
 
     for line in input.split_inclusive('\n') {
         if let Some(marker) = fence_marker(line) {
             match fence {
                 None => {
                     // Enter fenced code block (``` / ~~~). Contents must remain literal.
+                    flush_outside(&mut out, &mut outside_buf, &mut transform);
                     fence = Some(marker);
                     out.push_str(line);
                     continue;
@@ -253,15 +262,16 @@ where
         if fence.is_some() {
             out.push_str(line);
         } else {
-            out.push_str(&transform_outside_inline_code(line, &mut transform));
+            outside_buf.push_str(line);
         }
     }
 
+    flush_outside(&mut out, &mut outside_buf, &mut transform);
     out
 }
 
 fn preprocess_v2_html_tags(text: &str) -> String {
-    let with_expandable = preprocess_expandable_blockquotes(text);
+    let with_expandable = transform_outside_code(text, preprocess_expandable_blockquotes);
 
     transform_outside_code(&with_expandable, |chunk| {
         if !chunk.contains('<') {
