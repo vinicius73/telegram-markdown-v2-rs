@@ -13,6 +13,7 @@ const S_START: &str = "TGMDV2SSTART";
 const S_END: &str = "TGMDV2SEND";
 const EXPAND_FIRST: &str = "TGMDV2EXPFIRST ";
 const EXPAND_END: &str = "TGMDV2EXPENDMARK";
+const EXPAND_FIRST_LINE: &str = "> TGMDV2EXPFIRST ";
 
 const UNDERLINE_PATTERN: &str = r"(?s)<(?:u|ins)>(.*?)</(?:u|ins)>";
 const SPOILER_PATTERN: &str =
@@ -34,7 +35,6 @@ fn underline_re() -> &'static Regex {
 }
 
 fn spoiler_re() -> &'static Regex {
-    // Same rationale as `underline_re()`.
     SPOILER_RE.get_or_init(|| Regex::new(SPOILER_PATTERN).expect("invalid spoiler regex"))
 }
 
@@ -53,24 +53,14 @@ fn tg_time_re() -> &'static Regex {
 }
 
 fn ends_with_blockquote_line(text: &str) -> bool {
-    text.trim_end().lines().any(|line| {
-        let trimmed = line.trim_start();
-        trimmed.starts_with('>') && trimmed.len() > 1
-    })
-}
-
-fn ensure_blank_line_before_expandable(out: &mut String, before: &str) {
-    if before.trim_end().is_empty() {
-        return;
-    }
-    if before.ends_with("\n\n") {
-        return;
-    }
-    if before.ends_with('\n') {
-        out.push('\n');
-    } else {
-        out.push_str("\n\n");
-    }
+    text.trim_end()
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with('>') && trimmed.len() > 1
+        })
 }
 
 fn expandable_blockquote_to_markdown(content: &str, after_blockquote: bool) -> String {
@@ -88,19 +78,21 @@ fn expandable_blockquote_to_markdown(content: &str, after_blockquote: bool) -> S
     for (i, line) in lines.iter().enumerate() {
         let is_first = i == 0;
         let is_last = i + 1 == lines.len();
-        let first_prefix = if is_first && after_blockquote {
-            EXPAND_FIRST
-        } else {
-            ""
-        };
-        let end_marker = if is_last { EXPAND_END } else { "" };
 
-        out.push_str(&format!("> {first_prefix}{line}{end_marker}\n"));
+        out.push_str("> ");
+        if is_first && after_blockquote {
+            out.push_str(EXPAND_FIRST);
+        }
+        out.push_str(line);
+        if is_last {
+            out.push_str(EXPAND_END);
+        }
+        out.push('\n');
     }
     out
 }
 
-fn preprocess_expandable_blockquotes(text: &str) -> Result<String> {
+fn preprocess_expandable_blockquotes(text: &str) -> String {
     let re = expandable_blockquote_re();
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
@@ -114,7 +106,14 @@ fn preprocess_expandable_blockquotes(text: &str) -> Result<String> {
 
         let after_blockquote = ends_with_blockquote_line(before);
         if after_blockquote {
-            ensure_blank_line_before_expandable(&mut out, before);
+            let trimmed_before = before.trim_end();
+            if !trimmed_before.is_empty() && !before.ends_with("\n\n") {
+                if before.ends_with('\n') {
+                    out.push('\n');
+                } else {
+                    out.push_str("\n\n");
+                }
+            }
         }
 
         let content = cap.get(1).map(|matched| matched.as_str()).unwrap_or("");
@@ -126,7 +125,7 @@ fn preprocess_expandable_blockquotes(text: &str) -> Result<String> {
     }
 
     out.push_str(&text[last..]);
-    Ok(out)
+    out
 }
 
 #[derive(Clone, Copy)]
@@ -261,16 +260,16 @@ where
     out
 }
 
-fn preprocess_v2_html_tags(text: &str) -> Result<String> {
-    let with_expandable = preprocess_expandable_blockquotes(text)?;
-    let underline = underline_re();
-    let spoiler = spoiler_re();
-    let tg_emoji = tg_emoji_re();
-    let tg_time = tg_time_re();
+fn preprocess_v2_html_tags(text: &str) -> String {
+    let with_expandable = preprocess_expandable_blockquotes(text);
 
-    Ok(transform_outside_code(&with_expandable, |chunk| {
-        let with_emojis = tg_emoji.replace_all(chunk, "![$2](tg://emoji?id=$1)");
-        let with_times = tg_time.replace_all(with_emojis.as_ref(), |caps: &regex::Captures| {
+    transform_outside_code(&with_expandable, |chunk| {
+        if !chunk.contains('<') {
+            return chunk.to_owned();
+        }
+
+        let with_emojis = tg_emoji_re().replace_all(chunk, "![$2](tg://emoji?id=$1)");
+        let with_times = tg_time_re().replace_all(with_emojis.as_ref(), |caps: &regex::Captures| {
             let unix = &caps[1];
             let text = &caps[3];
             match caps
@@ -283,18 +282,21 @@ fn preprocess_v2_html_tags(text: &str) -> Result<String> {
             }
         });
         let with_underlines =
-            underline.replace_all(with_times.as_ref(), format!("{U_START}${{1}}{U_END}"));
-        spoiler
+            underline_re().replace_all(with_times.as_ref(), format!("{U_START}${{1}}{U_END}"));
+        spoiler_re()
             .replace_all(with_underlines.as_ref(), format!("{S_START}${{1}}{S_END}"))
             .to_string()
-    }))
+    })
 }
 
 fn postprocess_v2_formatting(text: &str) -> String {
-    let with_expandable = text
-        .replace(&format!("> {EXPAND_FIRST}"), "**>")
-        .replace(EXPAND_END, "||")
-        .replace("\n\n**>", "\n**>");
+    let with_expandable = if text.contains(EXPAND_FIRST) || text.contains(EXPAND_END) {
+        text.replace(EXPAND_FIRST_LINE, "**>")
+            .replace(EXPAND_END, "||")
+            .replace("\n\n**>", "\n**>")
+    } else {
+        text.to_owned()
+    };
     transform_outside_code(&with_expandable, |chunk| {
         let with_underlines = chunk.replace(U_START, "__").replace(U_END, "__");
         with_underlines.replace(S_START, "||").replace(S_END, "||")
@@ -361,7 +363,7 @@ pub fn convert(markdown: &str) -> Result<String> {
 /// # }
 /// ```
 pub fn convert_with_strategy(markdown: &str, strategy: UnsupportedTagsStrategy) -> Result<String> {
-    let processed_markdown = preprocess_v2_html_tags(markdown)?;
+    let processed_markdown = preprocess_v2_html_tags(markdown);
     let tree = to_mdast(&processed_markdown, &ParseOptions::gfm())
         .map_err(|message| Error::MarkdownParse { message })?;
 

@@ -6,30 +6,18 @@ use crate::utils::{escape_symbols, is_url};
 
 use super::{Renderer, utils::render_children};
 
-/// Returns true when the image URL maps to a Telegram custom emoji or date/time entity.
-fn is_telegram_special_image(url: &str) -> bool {
-    url.starts_with("tg://emoji") || url.starts_with("tg://time")
-}
-
 fn format_image_markdown(text: &str, url: &str) -> String {
-    let prefix = if is_telegram_special_image(url) {
+    let prefix = if url.starts_with("tg://emoji") || url.starts_with("tg://time") {
         "!"
     } else {
         ""
     };
+    let label = if text.is_empty() { url } else { text };
     let escaped_url = escape_symbols(url, TextType::Link);
-
-    if text.is_empty() {
-        format!(
-            "{prefix}[{}]({escaped_url})",
-            escape_symbols(url, TextType::Text)
-        )
-    } else {
-        format!(
-            "{prefix}[{}]({escaped_url})",
-            escape_symbols(text, TextType::Text)
-        )
-    }
+    format!(
+        "{prefix}[{}]({escaped_url})",
+        escape_symbols(label, TextType::Text)
+    )
 }
 
 /// Renders an inline link.

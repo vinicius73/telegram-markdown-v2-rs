@@ -1,7 +1,8 @@
 use markdown::mdast::{Code, InlineCode, Text};
 use regex::Regex;
+use std::sync::OnceLock;
 
-use crate::errors::{Error, Result};
+use crate::errors::Result;
 use crate::types::TextType;
 use crate::utils::escape_symbols;
 
@@ -17,18 +18,18 @@ pub fn render_inline_code(node: &InlineCode) -> Result<String> {
 
 const SHEBANG_PATTERN: &str = r"^#![a-z]+\n";
 
+static SHEBANG_RE: OnceLock<Regex> = OnceLock::new();
+
+fn shebang_re() -> &'static Regex {
+    SHEBANG_RE.get_or_init(|| Regex::new(SHEBANG_PATTERN).expect("invalid shebang regex"))
+}
+
 /// Renders a fenced code block.
 ///
 /// A leading shebang line is stripped to keep output consistent with Telegram
 /// code block rendering.
 pub fn render_code(node: &Code) -> Result<String> {
-    let re = Regex::new(SHEBANG_PATTERN).map_err(|source| Error::RegexCompile {
-        name: "code_block_shebang",
-        pattern: SHEBANG_PATTERN,
-        source,
-    })?;
-
-    let content = re.replace(&node.value, "");
+    let content = shebang_re().replace(&node.value, "");
     let escaped_content = escape_symbols(content.as_ref(), TextType::Code);
     let opening_fence = match node.lang.as_deref() {
         Some(lang) if !lang.is_empty() => format!("```{lang}"),
