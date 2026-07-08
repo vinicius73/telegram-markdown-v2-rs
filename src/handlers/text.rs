@@ -30,5 +30,9 @@ pub fn render_code(node: &Code) -> Result<String> {
 
     let content = re.replace(&node.value, "");
     let escaped_content = escape_symbols(content.as_ref(), TextType::Code);
-    Ok(format!("```\n{escaped_content}\n```"))
+    let opening_fence = match node.lang.as_deref() {
+        Some(lang) if !lang.is_empty() => format!("```{lang}"),
+        _ => "```".to_owned(),
+    };
+    Ok(format!("{opening_fence}\n{escaped_content}\n```"))
 }

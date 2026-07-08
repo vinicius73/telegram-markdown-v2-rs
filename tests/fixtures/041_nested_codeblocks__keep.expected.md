@@ -1,4 +1,4 @@
-```
+```markdown
 
 \`\`\`python
 foo = 'bar'
