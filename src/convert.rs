@@ -301,15 +301,16 @@ fn preprocess_v2_html_tags(text: &str) -> String {
 }
 
 fn postprocess_v2_formatting(text: &str) -> String {
-    let with_expandable = if text.contains(EXPAND_FIRST) || text.contains(EXPAND_END) {
-        text.replace(EXPAND_FIRST_LINE, "**>")
-            .replace(EXPAND_END, "||")
-            .replace("\n\n**>", "\n**>")
-    } else {
-        text.to_owned()
-    };
-    transform_outside_code(&with_expandable, |chunk| {
-        let with_underlines = chunk.replace(U_START, "__").replace(U_END, "__");
+    transform_outside_code(text, |chunk| {
+        let with_expandable = if chunk.contains(EXPAND_FIRST) || chunk.contains(EXPAND_END) {
+            chunk
+                .replace(EXPAND_FIRST_LINE, "**>")
+                .replace(EXPAND_END, "||")
+                .replace("\n\n**>", "\n**>")
+        } else {
+            chunk.to_owned()
+        };
+        let with_underlines = with_expandable.replace(U_START, "__").replace(U_END, "__");
         with_underlines.replace(S_START, "||").replace(S_END, "||")
     })
 }
