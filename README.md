@@ -13,6 +13,22 @@ Add to your `Cargo.toml`:
 telegram-markdown-v2 = "0.1"
 ```
 
+### Input mapping
+
+This library converts **regular Markdown/GFM** (plus Telegram HTML extensions) into **Telegram MarkdownV2**. It does not accept MarkdownV2 syntax as input.
+
+| Telegram result | Library input | MarkdownV2 output |
+| --- | --- | --- |
+| bold | `**text**` | `*text*` |
+| italic | `*text*` or `_text_` | `_text_` |
+| underline | `<u>text</u>` | `__text__` |
+| spoiler | `<span class="tg-spoiler">text</span>` | `\|\|text\|\|` |
+| link / mention | `[label](https://…)` or `[label](tg://user?id=…)` | `[label](url)` — only `)` and `\` escaped inside `(...)` |
+| custom emoji | `![emoji](tg://emoji?id=…)` | `![emoji](tg://emoji?id=…)` |
+| date/time | `![label](tg://time?unix=…&format=…)` or `<tg-time unix="…" format="…">label</tg-time>` | `![label](tg://time?unix=…&format=…)` |
+| code with language | fenced block with language tag | fenced block with language tag |
+| blockquote | line starting with `>` | line starting with `>` |
+
 ### Usage
 
 #### Basic conversion
@@ -29,7 +45,7 @@ fn main() -> telegram_markdown_v2::Result<()> {
 
 #### Strategy for “unsupported” constructs
 
-Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example: blockquotes, tables, HTML blocks). Use `UnsupportedTagsStrategy` to decide what to do:
+Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example: tables and HTML blocks). Blockquotes are rendered as native Telegram `>` lines. Use `UnsupportedTagsStrategy` to decide what to do with unsupported content:
 
 - `Keep`: keep the content as-is
 - `Escape`: treat it as plain text and escape special characters
@@ -39,8 +55,8 @@ Telegram MarkdownV2 does not support some Markdown/HTML constructs (for example:
 use telegram_markdown_v2::{convert_with_strategy, UnsupportedTagsStrategy};
 
 fn main() -> telegram_markdown_v2::Result<()> {
-    let out = convert_with_strategy("> test", UnsupportedTagsStrategy::Escape)?;
-    assert_eq!(out, "\\> test\n");
+    let out = convert_with_strategy("<div>test</div>", UnsupportedTagsStrategy::Escape)?;
+    assert_eq!(out, "<div\\>test</div\\>\n");
     Ok(())
 }
 ```
@@ -49,8 +65,11 @@ fn main() -> telegram_markdown_v2::Result<()> {
 
 Outside inline/fenced code, the converter recognizes:
 
-- `<u>…</u>` → `__…__` (underline)
-- `<span class="tg-spoiler">…</span>` → `||…||` (spoiler)
+- `<u>…</u>` / `<ins>…</ins>` → `__…__` (underline)
+- `<span class="tg-spoiler">…</span>` / `<tg-spoiler>…</tg-spoiler>` → `||…||` (spoiler)
+- `<tg-emoji emoji-id="…">…</tg-emoji>` → `![…](tg://emoji?id=…)` (custom emoji)
+- `<tg-time unix="…" format="…">…</tg-time>` → `![…](tg://time?unix=…&format=…)` (date/time)
+- `<blockquote expandable>…</blockquote>` → expandable blockquote (`> …||`)
 
 ```rust
 use telegram_markdown_v2::convert;

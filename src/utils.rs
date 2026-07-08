@@ -42,12 +42,9 @@ pub fn escape_symbols(text: &str, text_type: TextType) -> String {
 
     match text_type {
         TextType::Code => escape_with_rules(text, |byte| matches!(byte, b'\\' | b'`')),
-        TextType::Link => {
-            let is_telegram_deep_link = text.starts_with("tg://");
-            escape_with_rules(text, |byte| {
-                matches!(byte, b'\\' | b'(' | b')')
-                    || (is_telegram_deep_link && matches!(byte, b'?' | b'='))
-            })
+        TextType::Link => escape_with_rules(text, |byte| matches!(byte, b'\\' | b')')),
+        TextType::MarkdownLabel => {
+            escape_with_rules(text, |byte| matches!(byte, b'\\' | b'[' | b']'))
         }
         TextType::Text => escape_with_rules(text, |byte| {
             matches!(
@@ -130,14 +127,23 @@ mod tests {
         }
 
         #[rstest]
-        #[case("https://example.com/a(b)c?x=1", "https://example.com/a\\(b\\)c?x=1")]
+        #[case("https://example.com/a(b)c?x=1", "https://example.com/a(b\\)c?x=1")]
+        #[case("tg://resolve?domain=test(abc)", "tg://resolve?domain=test(abc\\)")]
         #[case(
-            "tg://resolve?domain=test(abc)",
-            "tg://resolve\\?domain\\=test\\(abc\\)"
+            "tg://time?unix=1647531900&format=wDT",
+            "tg://time?unix=1647531900&format=wDT"
         )]
-        #[case("TG://resolve?domain=test(abc)", "TG://resolve?domain=test\\(abc\\)")]
+        #[case("TG://resolve?domain=test(abc)", "TG://resolve?domain=test(abc\\)")]
         fn escapes_text_type_link(#[case] input: &str, #[case] expected: &str) {
             assert_eq!(escape_symbols(input, TextType::Link), expected);
+        }
+
+        #[rstest]
+        #[case(r"a]b[c\d", r"a\]b\[c\\d")]
+        #[case("plain", "plain")]
+        #[case("[]", r"\[\]")]
+        fn escapes_text_type_markdown_label(#[case] input: &str, #[case] expected: &str) {
+            assert_eq!(escape_symbols(input, TextType::MarkdownLabel), expected);
         }
     }
 

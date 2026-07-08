@@ -21,8 +21,8 @@
 //!
 //! ## Unsupported constructs
 //!
-//! Telegram MarkdownV2 does not support some Markdown/HTML constructs (e.g. blockquotes,
-//! tables, and raw HTML blocks). Use [`UnsupportedTagsStrategy`] to decide what to do
+//! Telegram MarkdownV2 does not support some Markdown/HTML constructs (e.g. tables
+//! and raw HTML blocks). Use [`UnsupportedTagsStrategy`] to decide what to do
 //! with such input:
 //!
 //! - [`UnsupportedTagsStrategy::Keep`]: keep the unsupported content as-is.
@@ -33,8 +33,8 @@
 //! # fn main() -> telegram_markdown_v2::Result<()> {
 //! use telegram_markdown_v2::{convert_with_strategy, UnsupportedTagsStrategy};
 //!
-//! let out = convert_with_strategy("> test", UnsupportedTagsStrategy::Escape)?;
-//! assert_eq!(out, "\\> test\n");
+//! let out = convert_with_strategy("<div>test</div>", UnsupportedTagsStrategy::Escape)?;
+//! assert_eq!(out, "<div\\>test</div\\>\n");
 //! # Ok(())
 //! # }
 //! ```
@@ -43,8 +43,11 @@
 //!
 //! Outside inline/fenced code, the converter recognizes:
 //!
-//! - `<u>…</u>` as underline (`__…__`)
-//! - `<span class="tg-spoiler">…</span>` as spoiler (`||…||`)
+//! - `<u>…</u>` and `<ins>…</ins>` as underline (`__…__`)
+//! - `<span class="tg-spoiler">…</span>` and `<tg-spoiler>…</tg-spoiler>` as spoiler (`||…||`)
+//! - `<tg-emoji emoji-id="…">…</tg-emoji>` as custom emoji (`![…](tg://emoji?id=…)`)
+//! - `<tg-time unix="…" format="…">…</tg-time>` as date/time (`![…](tg://time?unix=…&format=…)`)
+//! - `<blockquote expandable>…</blockquote>` as expandable blockquote (`> …||`)
 mod convert;
 mod definitions;
 mod errors;
