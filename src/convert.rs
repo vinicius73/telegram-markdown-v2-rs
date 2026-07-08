@@ -269,18 +269,19 @@ fn preprocess_v2_html_tags(text: &str) -> String {
         }
 
         let with_emojis = tg_emoji_re().replace_all(chunk, "![$2](tg://emoji?id=$1)");
-        let with_times = tg_time_re().replace_all(with_emojis.as_ref(), |caps: &regex::Captures| {
-            let unix = &caps[1];
-            let text = &caps[3];
-            match caps
-                .get(2)
-                .map(|matched| matched.as_str())
-                .filter(|value| !value.is_empty())
-            {
-                Some(format) => format!("![{text}](tg://time?unix={unix}&format={format})"),
-                None => format!("![{text}](tg://time?unix={unix})"),
-            }
-        });
+        let with_times =
+            tg_time_re().replace_all(with_emojis.as_ref(), |caps: &regex::Captures| {
+                let unix = &caps[1];
+                let text = &caps[3];
+                match caps
+                    .get(2)
+                    .map(|matched| matched.as_str())
+                    .filter(|value| !value.is_empty())
+                {
+                    Some(format) => format!("![{text}](tg://time?unix={unix}&format={format})"),
+                    None => format!("![{text}](tg://time?unix={unix})"),
+                }
+            });
         let with_underlines =
             underline_re().replace_all(with_times.as_ref(), format!("{U_START}${{1}}{U_END}"));
         spoiler_re()
