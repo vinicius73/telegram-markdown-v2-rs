@@ -61,7 +61,7 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.TAG }}
           fetch-depth: 0
@@ -78,29 +78,12 @@ jobs:
           TAG: ${{ env.TAG }}
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import os
-          import pathlib
-          import sys
-
-          try:
-              import tomllib
-          except ModuleNotFoundError:  # pragma: no cover
-              import tomli as tomllib  # type: ignore
-
-          tag = os.environ["TAG"]
-          cargo_toml = pathlib.Path("Cargo.toml").read_bytes()
-          data = tomllib.loads(cargo_toml)
-          version = data["package"]["version"]
-
-          expected = f"v{version}"
-          if tag != expected:
-              print(
-                  f"Tag/version mismatch: tag={tag!r} expected={expected!r} (Cargo.toml version={version!r})",
-                  file=sys.stderr,
-              )
-              sys.exit(1)
-          PY
+          version="$(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[0].version')"
+          expected="v${version}"
+          if [[ "${TAG}" != "${expected}" ]]; then
+            echo "Tag/version mismatch: tag='${TAG}' expected='${expected}' (Cargo.toml version='${version}')" >&2
+            exit 1
+          fi
 
       - name: Run tests (locked)
         run: cargo test --workspace --all-features --locked
