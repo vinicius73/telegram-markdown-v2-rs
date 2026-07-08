@@ -1,1 +1,1 @@
-[Atlassian](http://atlas\(\)sian.com)
+[Atlassian](http://atlas(\)sian.com)

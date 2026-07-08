@@ -23,9 +23,9 @@ This library converts **regular Markdown/GFM** (plus Telegram HTML extensions) i
 | italic | `*text*` or `_text_` | `_text_` |
 | underline | `<u>text</u>` | `__text__` |
 | spoiler | `<span class="tg-spoiler">text</span>` | `\|\|text\|\|` |
-| link / mention | `[label](https://…)` or `[label](tg://user?id=…)` | `[label](escaped-url)` |
-| custom emoji | `![emoji](tg://emoji?id=…)` | `![emoji](tg://emoji\?id\=…)` |
-| date/time | `![label](tg://time?unix=…&format=…)` | `![label](tg://time\?unix\=…&format\=…)` |
+| link / mention | `[label](https://…)` or `[label](tg://user?id=…)` | `[label](url)` — only `)` and `\` escaped inside `(...)` |
+| custom emoji | `![emoji](tg://emoji?id=…)` | `![emoji](tg://emoji?id=…)` |
+| date/time | `![label](tg://time?unix=…&format=…)` | `![label](tg://time?unix=…&format=…)` |
 | code with language | fenced block with language tag | fenced block with language tag |
 | blockquote | line starting with `>` | line starting with `>` |
 
