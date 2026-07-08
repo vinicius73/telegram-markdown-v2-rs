@@ -125,10 +125,7 @@ mod tests {
 
         #[rstest]
         #[case("https://example.com/a(b)c?x=1", "https://example.com/a(b\\)c?x=1")]
-        #[case(
-            "tg://resolve?domain=test(abc)",
-            "tg://resolve?domain=test(abc\\)"
-        )]
+        #[case("tg://resolve?domain=test(abc)", "tg://resolve?domain=test(abc\\)")]
         #[case(
             "tg://time?unix=1647531900&format=wDT",
             "tg://time?unix=1647531900&format=wDT"

@@ -106,7 +106,9 @@ fn preprocess_expandable_blockquotes(text: &str) -> Result<String> {
     let mut last = 0;
 
     for cap in re.captures_iter(text) {
-        let m = cap.get(0).expect("expandable blockquote match should exist");
+        let m = cap
+            .get(0)
+            .expect("expandable blockquote match should exist");
         let before = &text[last..m.start()];
         out.push_str(before);
 
@@ -116,7 +118,10 @@ fn preprocess_expandable_blockquotes(text: &str) -> Result<String> {
         }
 
         let content = cap.get(1).map(|matched| matched.as_str()).unwrap_or("");
-        out.push_str(&expandable_blockquote_to_markdown(content, after_blockquote));
+        out.push_str(&expandable_blockquote_to_markdown(
+            content,
+            after_blockquote,
+        ));
         last = m.end();
     }
 
@@ -268,7 +273,11 @@ fn preprocess_v2_html_tags(text: &str) -> Result<String> {
         let with_times = tg_time.replace_all(with_emojis.as_ref(), |caps: &regex::Captures| {
             let unix = &caps[1];
             let text = &caps[3];
-            match caps.get(2).map(|matched| matched.as_str()).filter(|value| !value.is_empty()) {
+            match caps
+                .get(2)
+                .map(|matched| matched.as_str())
+                .filter(|value| !value.is_empty())
+            {
                 Some(format) => format!("![{text}](tg://time?unix={unix}&format={format})"),
                 None => format!("![{text}](tg://time?unix={unix})"),
             }
@@ -276,10 +285,7 @@ fn preprocess_v2_html_tags(text: &str) -> Result<String> {
         let with_underlines =
             underline.replace_all(with_times.as_ref(), format!("{U_START}${{1}}{U_END}"));
         spoiler
-            .replace_all(
-                with_underlines.as_ref(),
-                format!("{S_START}${{1}}{S_END}"),
-            )
+            .replace_all(with_underlines.as_ref(), format!("{S_START}${{1}}{S_END}"))
             .to_string()
     }))
 }

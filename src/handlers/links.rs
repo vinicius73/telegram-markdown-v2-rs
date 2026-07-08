@@ -12,7 +12,11 @@ fn is_telegram_special_image(url: &str) -> bool {
 }
 
 fn format_image_markdown(text: &str, url: &str) -> String {
-    let prefix = if is_telegram_special_image(url) { "!" } else { "" };
+    let prefix = if is_telegram_special_image(url) {
+        "!"
+    } else {
+        ""
+    };
     let escaped_url = escape_symbols(url, TextType::Link);
 
     if text.is_empty() {
