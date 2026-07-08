@@ -1,6 +1,6 @@
 [package]
 name = "telegram-markdown-v2"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "Transform regular Markdown into Telegram MarkdownV2 (parse_mode = MarkdownV2)."
 readme = "README.md"
