@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 concurrency:
@@ -14,12 +15,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  release-please:
     runs-on: ubuntu-latest
     steps:
       - name: Release Please
-        id: rp
-        uses: googleapis/release-please-action@v4
+        id: release
+        uses: googleapis/release-please-action@v5
         with:
-          release-type: rust
-          package-name: telegram-markdown-v2
+          # Prefer a PAT (RELEASE_PLEASE_TOKEN) so CI runs on release PRs.
+          # Falls back to GITHUB_TOKEN when the secret is not configured.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          target-branch: master
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
