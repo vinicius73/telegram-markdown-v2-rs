@@ -5,7 +5,8 @@ use std::sync::OnceLock;
 use crate::definitions::collect_definitions;
 use crate::errors::{Error, Result};
 use crate::handlers::{RenderContext, Renderer};
-use crate::types::UnsupportedTagsStrategy;
+use crate::types::{TextType, UnsupportedTagsStrategy};
+use crate::utils::escape_symbols;
 
 const U_START: &str = "TGMDV2USTART";
 const U_END: &str = "TGMDV2UEND";
@@ -30,7 +31,6 @@ static TG_EMOJI_RE: OnceLock<Regex> = OnceLock::new();
 static TG_TIME_RE: OnceLock<Regex> = OnceLock::new();
 
 fn underline_re() -> &'static Regex {
-    // Avoid compiling regexes on every conversion; cache them for the process lifetime.
     UNDERLINE_RE.get_or_init(|| Regex::new(UNDERLINE_PATTERN).expect("invalid underline regex"))
 }
 
@@ -52,17 +52,19 @@ fn tg_time_re() -> &'static Regex {
     TG_TIME_RE.get_or_init(|| Regex::new(TG_TIME_PATTERN).expect("invalid tg-time regex"))
 }
 
-/// Escapes `\`, `[`, `]` so an interpolated label can't break the
-/// `![label](url)` syntax this preprocessing step generates.
-fn escape_markdown_label(text: &str) -> String {
-    let mut escaped = String::with_capacity(text.len());
-    for ch in text.chars() {
-        if matches!(ch, '\\' | '[' | ']') {
-            escaped.push('\\');
-        }
-        escaped.push(ch);
+fn tg_emoji_to_markdown(emoji_id: &str, label: &str) -> String {
+    format!(
+        "![{}](tg://emoji?id={emoji_id})",
+        escape_symbols(label, TextType::MarkdownLabel)
+    )
+}
+
+fn tg_time_to_markdown(unix: &str, format: Option<&str>, label: &str) -> String {
+    let label = escape_symbols(label, TextType::MarkdownLabel);
+    match format.filter(|value| !value.is_empty()) {
+        Some(format) => format!("![{label}](tg://time?unix={unix}&format={format})"),
+        None => format!("![{label}](tg://time?unix={unix})"),
     }
-    escaped
 }
 
 fn ends_with_blockquote_line(text: &str) -> bool {
@@ -106,6 +108,10 @@ fn expandable_blockquote_to_markdown(content: &str, after_blockquote: bool) -> S
 }
 
 fn preprocess_expandable_blockquotes(text: &str) -> String {
+    if !text.contains("<blockquote") {
+        return text.to_owned();
+    }
+
     let re = expandable_blockquote_re();
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
@@ -187,7 +193,6 @@ where
         }
 
         // Inline code can be delimited by N backticks and must close with the same N.
-        // We keep code spans verbatim so preprocessing doesn't mutate literal code.
         let mut tick_len = 1;
         while i + tick_len < bytes.len() && bytes[i + tick_len] == b'`' {
             tick_len += 1;
@@ -243,7 +248,7 @@ where
 {
     let mut out = String::with_capacity(input.len());
     let mut fence: Option<Fence> = None;
-    let mut outside_buf = String::new();
+    let mut outside_buf = String::with_capacity(input.len());
 
     let flush_outside = |out: &mut String, buf: &mut String, transform: &mut F| {
         if !buf.is_empty() {
@@ -256,14 +261,12 @@ where
         if let Some(marker) = fence_marker(line) {
             match fence {
                 None => {
-                    // Enter fenced code block (``` / ~~~). Contents must remain literal.
                     flush_outside(&mut out, &mut outside_buf, &mut transform);
                     fence = Some(marker);
                     out.push_str(line);
                     continue;
                 }
                 Some(open) if open.marker == marker.marker && marker.len >= open.len => {
-                    // Close fence: same marker and at least the opening fence length.
                     fence = None;
                     out.push_str(line);
                     continue;
@@ -284,30 +287,22 @@ where
 }
 
 fn preprocess_v2_html_tags(text: &str) -> String {
-    let with_expandable = transform_outside_code(text, preprocess_expandable_blockquotes);
-
-    transform_outside_code(&with_expandable, |chunk| {
+    transform_outside_code(text, |chunk| {
+        let chunk = preprocess_expandable_blockquotes(chunk);
         if !chunk.contains('<') {
-            return chunk.to_owned();
+            return chunk;
         }
 
-        let with_emojis = tg_emoji_re().replace_all(chunk, |caps: &regex::Captures| {
-            let emoji_id = &caps[1];
-            let label = escape_markdown_label(&caps[2]);
-            format!("![{label}](tg://emoji?id={emoji_id})")
+        let with_emojis = tg_emoji_re().replace_all(&chunk, |caps: &regex::Captures| {
+            tg_emoji_to_markdown(&caps[1], &caps[2])
         });
         let with_times =
             tg_time_re().replace_all(with_emojis.as_ref(), |caps: &regex::Captures| {
-                let unix = &caps[1];
-                let label = escape_markdown_label(&caps[3]);
-                match caps
-                    .get(2)
-                    .map(|matched| matched.as_str())
-                    .filter(|value| !value.is_empty())
-                {
-                    Some(format) => format!("![{label}](tg://time?unix={unix}&format={format})"),
-                    None => format!("![{label}](tg://time?unix={unix})"),
-                }
+                tg_time_to_markdown(
+                    &caps[1],
+                    caps.get(2).map(|matched| matched.as_str()),
+                    &caps[3],
+                )
             });
         let with_underlines =
             underline_re().replace_all(with_times.as_ref(), format!("{U_START}${{1}}{U_END}"));
@@ -317,18 +312,32 @@ fn preprocess_v2_html_tags(text: &str) -> String {
     })
 }
 
-fn postprocess_v2_formatting(text: &str) -> String {
-    transform_outside_code(text, |chunk| {
-        let with_expandable = if chunk.contains(EXPAND_FIRST) || chunk.contains(EXPAND_END) {
-            chunk
-                .replace(EXPAND_FIRST_LINE, "**>")
-                .replace(EXPAND_END, "||")
-                .replace("\n\n**>", "\n**>")
-        } else {
-            chunk.to_owned()
-        };
-        let with_underlines = with_expandable.replace(U_START, "__").replace(U_END, "__");
-        with_underlines.replace(S_START, "||").replace(S_END, "||")
+fn postprocess_v2_chunk(chunk: &str) -> String {
+    if !chunk.contains(EXPAND_FIRST)
+        && !chunk.contains(EXPAND_END)
+        && !chunk.contains(U_START)
+        && !chunk.contains(U_END)
+        && !chunk.contains(S_START)
+        && !chunk.contains(S_END)
+    {
+        return chunk.to_owned();
+    }
+
+    let with_expandable = if chunk.contains(EXPAND_FIRST) || chunk.contains(EXPAND_END) {
+        chunk
+            .replace(EXPAND_FIRST_LINE, "**>")
+            .replace(EXPAND_END, "||")
+            .replace("\n\n**>", "\n**>")
+    } else {
+        chunk.to_owned()
+    };
+    let with_underlines = with_expandable.replace(U_START, "__").replace(U_END, "__");
+    with_underlines.replace(S_START, "||").replace(S_END, "||")
+}
+
+fn finalize_v2_output(rendered: &str) -> String {
+    transform_outside_code(rendered, |chunk| {
+        postprocess_v2_chunk(&chunk.replace("<!---->\n", ""))
     })
 }
 
@@ -404,7 +413,5 @@ pub fn convert_with_strategy(markdown: &str, strategy: UnsupportedTagsStrategy) 
 
     let renderer = Renderer::new(&context);
     let result = renderer.render_root(&tree)?;
-    // Strip parser placeholders, but never inside code (inline/fenced).
-    let cleaned = transform_outside_code(&result, |chunk| chunk.replace("<!---->\n", ""));
-    Ok(postprocess_v2_formatting(&cleaned))
+    Ok(finalize_v2_output(&result))
 }

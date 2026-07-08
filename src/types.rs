@@ -20,6 +20,8 @@ pub enum TextType {
     Code,
     /// URL/link destination context.
     Link,
+    /// Markdown image label before parsing (`\`, `[`, `]` only).
+    MarkdownLabel,
 }
 
 /// Reference-style link definition extracted from the Markdown AST.
