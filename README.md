@@ -25,7 +25,7 @@ This library converts **regular Markdown/GFM** (plus Telegram HTML extensions) i
 | spoiler | `<span class="tg-spoiler">text</span>` | `\|\|text\|\|` |
 | link / mention | `[label](https://…)` or `[label](tg://user?id=…)` | `[label](url)` — only `)` and `\` escaped inside `(...)` |
 | custom emoji | `![emoji](tg://emoji?id=…)` | `![emoji](tg://emoji?id=…)` |
-| date/time | `![label](tg://time?unix=…&format=…)` | `![label](tg://time?unix=…&format=…)` |
+| date/time | `![label](tg://time?unix=…&format=…)` or `<tg-time unix="…" format="…">label</tg-time>` | `![label](tg://time?unix=…&format=…)` |
 | code with language | fenced block with language tag | fenced block with language tag |
 | blockquote | line starting with `>` | line starting with `>` |
 
@@ -68,6 +68,7 @@ Outside inline/fenced code, the converter recognizes:
 - `<u>…</u>` / `<ins>…</ins>` → `__…__` (underline)
 - `<span class="tg-spoiler">…</span>` / `<tg-spoiler>…</tg-spoiler>` → `||…||` (spoiler)
 - `<tg-emoji emoji-id="…">…</tg-emoji>` → `![…](tg://emoji?id=…)` (custom emoji)
+- `<tg-time unix="…" format="…">…</tg-time>` → `![…](tg://time?unix=…&format=…)` (date/time)
 - `<blockquote expandable>…</blockquote>` → expandable blockquote (`> …||`)
 
 ```rust

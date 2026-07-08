@@ -46,6 +46,7 @@
 //! - `<u>…</u>` and `<ins>…</ins>` as underline (`__…__`)
 //! - `<span class="tg-spoiler">…</span>` and `<tg-spoiler>…</tg-spoiler>` as spoiler (`||…||`)
 //! - `<tg-emoji emoji-id="…">…</tg-emoji>` as custom emoji (`![…](tg://emoji?id=…)`)
+//! - `<tg-time unix="…" format="…">…</tg-time>` as date/time (`![…](tg://time?unix=…&format=…)`)
 //! - `<blockquote expandable>…</blockquote>` as expandable blockquote (`> …||`)
 mod convert;
 mod definitions;
