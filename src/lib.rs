@@ -45,6 +45,7 @@
 //!
 //! - `<u>…</u>` as underline (`__…__`)
 //! - `<span class="tg-spoiler">…</span>` as spoiler (`||…||`)
+//! - `<blockquote expandable>…</blockquote>` as expandable blockquote (`> …||`)
 mod convert;
 mod definitions;
 mod errors;

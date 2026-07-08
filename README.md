@@ -67,6 +67,7 @@ Outside inline/fenced code, the converter recognizes:
 
 - `<u>…</u>` → `__…__` (underline)
 - `<span class="tg-spoiler">…</span>` → `||…||` (spoiler)
+- `<blockquote expandable>…</blockquote>` → expandable blockquote (`> …||`)
 
 ```rust
 use telegram_markdown_v2::convert;

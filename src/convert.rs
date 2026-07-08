@@ -11,12 +11,16 @@ const U_START: &str = "TGMDV2USTART";
 const U_END: &str = "TGMDV2UEND";
 const S_START: &str = "TGMDV2SSTART";
 const S_END: &str = "TGMDV2SEND";
+const EXPAND_FIRST: &str = "TGMDV2EXPFIRST ";
+const EXPAND_END: &str = "TGMDV2EXPENDMARK";
 
 const UNDERLINE_PATTERN: &str = r"(?s)<u>(.*?)</u>";
 const SPOILER_PATTERN: &str = r#"(?s)<span class="tg-spoiler">(.*?)</span>"#;
+const EXPANDABLE_BLOCKQUOTE_PATTERN: &str = r"(?s)<blockquote\s+expandable>(.*?)</blockquote>";
 
 static UNDERLINE_RE: OnceLock<Regex> = OnceLock::new();
 static SPOILER_RE: OnceLock<Regex> = OnceLock::new();
+static EXPANDABLE_BLOCKQUOTE_RE: OnceLock<Regex> = OnceLock::new();
 
 fn underline_re() -> &'static Regex {
     // Avoid compiling regexes on every conversion; cache them for the process lifetime.
@@ -26,6 +30,84 @@ fn underline_re() -> &'static Regex {
 fn spoiler_re() -> &'static Regex {
     // Same rationale as `underline_re()`.
     SPOILER_RE.get_or_init(|| Regex::new(SPOILER_PATTERN).expect("invalid spoiler regex"))
+}
+
+fn expandable_blockquote_re() -> &'static Regex {
+    EXPANDABLE_BLOCKQUOTE_RE.get_or_init(|| {
+        Regex::new(EXPANDABLE_BLOCKQUOTE_PATTERN).expect("invalid expandable blockquote regex")
+    })
+}
+
+fn ends_with_blockquote_line(text: &str) -> bool {
+    text.trim_end().lines().any(|line| {
+        let trimmed = line.trim_start();
+        trimmed.starts_with('>') && trimmed.len() > 1
+    })
+}
+
+fn ensure_blank_line_before_expandable(out: &mut String, before: &str) {
+    if before.trim_end().is_empty() {
+        return;
+    }
+    if before.ends_with("\n\n") {
+        return;
+    }
+    if before.ends_with('\n') {
+        out.push('\n');
+    } else {
+        out.push_str("\n\n");
+    }
+}
+
+fn expandable_blockquote_to_markdown(content: &str, after_blockquote: bool) -> String {
+    let lines: Vec<&str> = content
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+
+    if lines.is_empty() {
+        return String::new();
+    }
+
+    let mut out = String::new();
+    for (i, line) in lines.iter().enumerate() {
+        let is_first = i == 0;
+        let is_last = i + 1 == lines.len();
+        let first_prefix = if is_first && after_blockquote {
+            EXPAND_FIRST
+        } else {
+            ""
+        };
+        let end_marker = if is_last { EXPAND_END } else { "" };
+
+        out.push_str(&format!("> {first_prefix}{line}{end_marker}\n"));
+    }
+    out
+}
+
+fn preprocess_expandable_blockquotes(text: &str) -> Result<String> {
+    let re = expandable_blockquote_re();
+    let mut out = String::with_capacity(text.len());
+    let mut last = 0;
+
+    for cap in re.captures_iter(text) {
+        let m = cap.get(0).expect("expandable blockquote match should exist");
+        let before = &text[last..m.start()];
+        out.push_str(before);
+
+        let after_blockquote = ends_with_blockquote_line(before);
+        if after_blockquote {
+            ensure_blank_line_before_expandable(&mut out, before);
+        }
+
+        let content = cap.get(1).map(|matched| matched.as_str()).unwrap_or("");
+        out.push_str(&expandable_blockquote_to_markdown(content, after_blockquote));
+        last = m.end();
+    }
+
+    out.push_str(&text[last..]);
+    Ok(out)
 }
 
 #[derive(Clone, Copy)]
@@ -161,10 +243,11 @@ where
 }
 
 fn preprocess_v2_html_tags(text: &str) -> Result<String> {
+    let with_expandable = preprocess_expandable_blockquotes(text)?;
     let underline = underline_re();
     let spoiler = spoiler_re();
 
-    Ok(transform_outside_code(text, |chunk| {
+    Ok(transform_outside_code(&with_expandable, |chunk| {
         let with_underlines = underline.replace_all(chunk, format!("{U_START}${{1}}{U_END}"));
         spoiler
             .replace_all(with_underlines.as_ref(), format!("{S_START}${{1}}{S_END}"))
@@ -173,7 +256,11 @@ fn preprocess_v2_html_tags(text: &str) -> Result<String> {
 }
 
 fn postprocess_v2_formatting(text: &str) -> String {
-    transform_outside_code(text, |chunk| {
+    let with_expandable = text
+        .replace(&format!("> {EXPAND_FIRST}"), "**>")
+        .replace(EXPAND_END, "||")
+        .replace("\n\n**>", "\n**>");
+    transform_outside_code(&with_expandable, |chunk| {
         let with_underlines = chunk.replace(U_START, "__").replace(U_END, "__");
         with_underlines.replace(S_START, "||").replace(S_END, "||")
     })
@@ -222,6 +309,7 @@ pub fn convert(markdown: &str) -> Result<String> {
 ///
 /// - `<u>…</u>` → `__…__` (underline)
 /// - `<span class="tg-spoiler">…</span>` → `||…||` (spoiler)
+/// - `<blockquote expandable>…</blockquote>` → expandable blockquote (`> …||`)
 ///
 /// # Examples
 ///
