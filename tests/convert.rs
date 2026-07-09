@@ -59,3 +59,17 @@ fn all_source_fixtures_match(
     assert_eq!(actual, expected, "fixture failed: {}", input_path.display());
     Ok(())
 }
+
+/// End-to-end showcase of official Bot API MarkdownV2 constructs.
+///
+/// Exercises regular Markdown/GFM and Telegram HTML extensions in a single
+/// large document, asserting the full converted output in one shot.
+#[test]
+fn official_api_showcase_e2e() -> Result<(), Box<dyn std::error::Error>> {
+    let input = fs::read_to_string("tests/fixtures/077_official_api_showcase__keep.input.md")?;
+    let expected =
+        fs::read_to_string("tests/fixtures/077_official_api_showcase__keep.expected.md")?;
+    let actual = convert(&input)?;
+    assert_eq!(actual, expected);
+    Ok(())
+}
